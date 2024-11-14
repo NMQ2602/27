@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tải lên và Truy cập Media</title>
+  <link rel="stylesheet" href="Bài 27.css">
+</head>
+<body>
+
+<h2>Tải lên và Truy cập Media</h2>
+
+<h3>Truy cập Camera Cục bộ</h3>
+<button id="camera-button">Bắt đầu Camera</button>
+<button id="stop-camera-button" disabled>Dừng Camera</button>
+<video id="camera-preview" autoplay></video>
+<canvas id="camera-capture" style="display: none;"></canvas>
+<img id="captured-image" alt="Hình ảnh chụp được" style="display: none;">
+
+<h3>Ghi Âm</h3>
+<button id="record-audio-button">Bắt đầu Ghi âm</button>
+<button id="stop-audio-button" disabled>Dừng Ghi âm</button>
+<audio id="audio-playback" controls></audio>
+
+<h3>Tải lên Video (MP4)</h3>
+<input type="file" id="file-input-video" accept="video/mp4">
+<div id="progress-bar-video">
+  <div></div>
+</div>
+<video id="preview-video" controls></video>
+<div id="video-info"></div>
+
+<h3>Tải lên Hình ảnh (JPEG)</h3>
+<input type="file" id="file-input-image" accept="image/jpeg">
+<div id="progress-bar-image">
+  <div></div>
+</div>
+<img id="preview-image" alt="Hình ảnh xem trước">
+<div id="image-info"></div>
+
+<script>
+  const fileInputImage = document.getElementById('file-input-image');
+  const previewImage = document.getElementById('preview-image');
+  const progressBarImage = document.getElementById('progress-bar-image');
+  const progressImage = progressBarImage.querySelector('div');
+  const imageInfo = document.getElementById('image-info');
+ 
+  fileInputImage.addEventListener('change', async (event) => {
+    const file = event.target.files[0];
+    if (file && file.type === 'image/jpeg') {
+      progressBarImage.style.display = 'block';
+      progressImage.style.width = '0%';
+      previewImage.style.display = 'none';
+      imageInfo.textContent = '';
+      try {
+        const imageUrl = await loadFileWithProgress(file, progressImage);
+        previewImage.src = imageUrl;
+        previewImage.style.display = 'block';
+        imageInfo.textContent = `Kích thước Hình ảnh: ${(file.size / 1024).toFixed(2)} KB`;
+      } catch (error) {
+        console.error('Lỗi khi tải hình ảnh:', error);
+      } finally {
+        progressBarImage.style.display = 'none';
+      }
+    } else {
+      alert('Vui lòng tải lên hình ảnh định dạng JPEG.');
+    }
+  });
+ 
+  const fileInputVideo = document.getElementById('file-input-video');
+  const previewVideo = document.getElementById('preview-video');
+  const progressBarVideo = document.getElementById('progress-bar-video');
+  const progressVideo = progressBarVideo.querySelector('div');
+  const videoInfo = document.getElementById('video-info');
+ 
+  fileInputVideo.addEventListener('change', async (event) => {
+    const file = event.target.files[0];
+    if (file && file.type === 'video/mp4') {
+      progressBarVideo.style.display = 'block';
+      progressVideo.style.width = '0%';
+      previewVideo.style.display = 'none';
+      videoInfo.textContent = '';
+      try {
+        const videoUrl = await loadFileWithProgress(file, progressVideo);
+        previewVideo.src = videoUrl;
+        previewVideo.style.display = 'block';
+        videoInfo.textContent = `Kích thước Video: ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+      } catch (error) {
+        console.error('Lỗi khi tải video:', error);
+      } finally {
+        progressBarVideo.style.display = 'none';
+      }
+    } else {
+      alert('Vui lòng tải lên video định dạng MP4.');
+    }
+  });
+ 
+  function loadFileWithProgress(file, progressBar) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percentLoaded = (event.loaded / event.total) * 100;
+          progressBar.style.width = percentLoaded + '%';
+        }
+      };
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('Không thể tải tệp'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  const cameraButton = document.getElementById('camera-button');
+  const stopCameraButton = document.getElementById('stop-camera-button');
+  const cameraPreview = document.getElementById('camera-preview');
+  const cameraCapture = document.getElementById('camera-capture');
+  const capturedImage = document.getElementById('captured-image');
+  let cameraStream;
+
+  cameraButton.addEventListener('click', async () => {
+    try {
+      cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      cameraPreview.srcObject = cameraStream;
+      cameraPreview.style.display = 'block';
+      stopCameraButton.disabled = false;
+      cameraButton.disabled = true;
+    } catch (error) {
+      console.error('Lỗi khi truy cập camera:', error);
+      alert('Không thể truy cập camera.');
+    }
+  });
+
+  stopCameraButton.addEventListener('click', () => {
+    if (cameraStream) {
+      const tracks = cameraStream.getTracks();
+      tracks.forEach(track => track.stop());
+      cameraStream = null;
+      cameraPreview.style.display = 'none';
+      stopCameraButton.disabled = true;
+      cameraButton.disabled = false;
+    }
+    cameraCapture.width = cameraPreview.videoWidth;
+    cameraCapture.height = cameraPreview.videoHeight;
+    const context = cameraCapture.getContext('2d');
+    context.drawImage(cameraPreview, 0, 0, cameraCapture.width, cameraCapture.height);
+    capturedImage.src = cameraCapture.toDataURL('image/png');
+    capturedImage.style.display = 'block';
+  });
+</script>
+
+</body>
+</html>
